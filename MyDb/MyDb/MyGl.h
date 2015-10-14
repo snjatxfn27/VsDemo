@@ -29,4 +29,7 @@ public:
 	afx_msg void OnBnClickedButton2();
 	afx_msg void OnBnClickedButton4();
 	afx_msg void OnBnClickedButton3();
+	int m_nFlag;
+	CString  m_nFlagTo;
+	virtual BOOL OnInitDialog();
 };

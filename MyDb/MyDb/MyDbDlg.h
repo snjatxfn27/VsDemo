@@ -62,4 +62,6 @@ public:
 	afx_msg void OnBnClickedButTj2();
 	afx_msg void OnBnClickedButSy2();
 	bool m_bLongin;
+	void GetData(CString strName, CString strFlag);
+	BOOL bGuanli;
 };

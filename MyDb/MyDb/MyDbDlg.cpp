@@ -134,8 +134,8 @@ BOOL CMyDbDlg::OnInitDialog()
 	GetModuleFileName(NULL,tcPath,_MAX_PATH);
 	CString csPath =tcPath;
 	csPath = csPath.Left(csPath.ReverseFind('\\'));
-	m_sqlName = csPath ;\
-		m_sqlName += "\\Data.mdb";
+	m_sqlName = csPath ;
+	m_sqlName += "\\Data.mdb";
 
 	m_bLongin = false;
 
@@ -331,73 +331,66 @@ void CMyDbDlg::OnBnClickedButJy2()
 	dlg.DoModal();
 }
 
-	void CMyDbDlg::OnBnClickedButJy()
+void CMyDbDlg::OnBnClickedButJy()
+{
+	
+	if ( m_csName.GetLength()==0)
 	{
-		if ( m_csName.GetLength()==0)
+		MessageBox(_T("参数错误"),_T("提示"));
+		return;
+	}
+
+	m_lstOutData.DeleteAllItems();
+	CUIIADORXServer *SqlServer;
+	SqlServer=OpenAdoServer(m_sqlName);
+	if (SqlServer==NULL)
+		return ;
+	else
+	{
+
+		CString csStrsql;
+		CStringArray csTrlist;
+		csStrsql.Format(_T("select * from bookmessageto where  Name='%s' and Flag='1'"),m_csName);
+		int Isqlnum= SqlServer->GetSelData(csStrsql,csTrlist);
+
+		if (Isqlnum <= 0)
 		{
-			MessageBox(_T("参数错误"),_T("提示"));
+			MessageBox(_T("没有记录"),_T("提示"));
 			return;
 		}
+		int sum =1;
 
-		m_lstOutData.DeleteAllItems();
-		CUIIADORXServer *SqlServer;
-		SqlServer=OpenAdoServer(m_sqlName);
-		if (SqlServer==NULL)
-			return ;
-		else
+		for (int i=0;i<Isqlnum;i++)
 		{
+			CStringList csTrlistTo;
+			csStrsql.Format(_T("select * from bookdata where  BookName='%s'"),csTrlist[sum]);
 
-			CString csStrsql;
-			CStringArray csTrlist;
-			csStrsql.Format(_T("select * from bookmessageto where  Name='%s' and Flag='1'"),m_csName);
-			int Isqlnum= SqlServer->GetSelData(csStrsql,csTrlist);
-			int tt =csTrlist.GetSize();
-// 			CString st;
-// 			for (int i =0 ;i < tt ;i++)
-// 			{
-// 				st.Format(_T("%d: %s"),i,csTrlist.GetAt(i));
-// 				MessageBox(st);
-// 			}
-			
-			int t =0;
-			if (Isqlnum <= 0)
+			int IsqlnumTo=SqlServer->GetSelData(csStrsql,csTrlistTo);
+
+			IsqlnumTo=(double)IsqlnumTo/(double)6;
+
+			CString csOut;
+			POSITION rPos;
+			rPos = csTrlistTo.GetHeadPosition();
+
+			for (int i = 0; i < IsqlnumTo; i++)
 			{
-				MessageBox(_T("没有记录"),_T("提示"));
-				return;
-			}
-			int sum =1;
+				int row = m_lstOutData.GetItemCount();
+				m_lstOutData.InsertItem(row ,_T(""));
 
-			for (int i=0;i<Isqlnum;i++)
-			{
-				CStringList csTrlistTo;
-				csStrsql.Format(_T("select * from bookdata where  BookName='%s'"),csTrlist[sum]);
-
- 				int IsqlnumTo=SqlServer->GetSelData(csStrsql,csTrlistTo);
-
-				IsqlnumTo=(double)IsqlnumTo/(double)6;
-
-				CString csOut;
-				POSITION rPos;
-				rPos = csTrlistTo.GetHeadPosition();
-
-				for (int i = 0; i < IsqlnumTo; i++)
+				for (int j=0;j<6;j++)
 				{
-					int row = m_lstOutData.GetItemCount();
-					m_lstOutData.InsertItem(row ,_T(""));
-
-					for (int j=0;j<6;j++)
-					{
-						csOut=csTrlistTo.GetNext(rPos);
-						m_lstOutData.SetItemText(row,j,csOut);	
-					}
-
+					csOut=csTrlistTo.GetNext(rPos);
+					m_lstOutData.SetItemText(row,j,csOut);	
 				}
-				sum+=7;
-			}
 
-			CloseAdoServer(SqlServer);
+			}
+			sum+=7;
 		}
+
+		CloseAdoServer(SqlServer);
 	}
+}
 
 void CMyDbDlg::OnBnClickedButJy3()
 {
@@ -422,6 +415,16 @@ void CMyDbDlg::OnBnClickedButJy3()
 		return ;
 	else
 	{
+		SYSTEMTIME st;
+
+		CString strDate,strTime,strOutTime;
+
+		GetLocalTime(&st);
+
+		strDate.Format(_T("%4d-%2d-%2d"),st.wYear,st.wMonth,st.wDay);
+
+		strTime.Format(_T("%2d:%2d:%2d"),st.wHour,st.wMinute,st.wSecond);
+		strOutTime = strDate +_T("-")+strTime;
 
 		CString csStrsql;
 		CStringArray csTrlist;
@@ -433,7 +436,7 @@ void CMyDbDlg::OnBnClickedButJy3()
 			return;
 		}
 
-		csStrsql.Format(_T("insert into bookmessageto ([BookName], [Name], [NameTo], [Flag]) values ('%s','%s','%s','%s')"),m_csSelectBookName,m_csName,m_csSelectName,_T("1"));
+		csStrsql.Format(_T("insert into bookmessageto ([BookName], [Name], [NameTo], [Flag],[OutTime]) values ('%s','%s','%s','%s','%s')"),m_csSelectBookName,m_csName,m_csSelectName,_T("1"),strOutTime);
 		int isql =SqlServer->ExecuteSQL(csStrsql);
 
 		if (isql)
@@ -445,7 +448,7 @@ void CMyDbDlg::OnBnClickedButJy3()
 		}
 		m_csSelectNum.Format(_T("%d"),_wtoi(m_csSelectNum)-1);
 		csStrsql.Format(_T("update [bookdata]  set [BookSum]='%s' where	[BookName]='%s'"),m_csSelectNum,m_csSelectBookName);
-	
+
 		SqlServer->ExecuteSQL(csStrsql);
 
 		CloseAdoServer(SqlServer);
@@ -481,9 +484,18 @@ void CMyDbDlg::OnBnClickedButGh()
 			MessageBox(_T("没有记录"),_T("提示"));
 			return;
 		}
+		SYSTEMTIME st;
 
+		CString strDate,strTime,strOutTime;
 
-		csStrsql.Format(_T("update [bookmessageto]  set [Flag]='%s' where	[BookName]='%s' and Name='%s' "),_T("0"),m_csSelectBookName,m_csName);
+		GetLocalTime(&st);
+
+		strDate.Format(_T("%4d-%2d-%2d"),st.wYear,st.wMonth,st.wDay);
+
+		strTime.Format(_T("%2d:%2d:%2d"),st.wHour,st.wMinute,st.wSecond);
+		strOutTime = strDate +_T("-")+strTime;
+
+		csStrsql.Format(_T("update [bookmessageto]  set [Flag]='%s',[InTime]='%s' where	[BookName]='%s' and Name='%s' "),_T("0"),strOutTime,m_csSelectBookName,m_csName);
 		int isql=SqlServer->ExecuteSQL(csStrsql);
 		if(isql)
 			MessageBox(_T("归还成功"),_T("提示"));
@@ -492,20 +504,46 @@ void CMyDbDlg::OnBnClickedButGh()
 
 		m_csSelectNum.Format(_T("%d"),_wtoi(m_csSelectNum)+1);
 		csStrsql.Format(_T("update [bookdata]  set [BookSum]='%s' where	[BookName]='%s'"),m_csSelectNum,m_csSelectBookName);
-	
+
 		SqlServer->ExecuteSQL(csStrsql);
 
 		CloseAdoServer(SqlServer);
 		m_csSelectBookName = "";
 
 	}
+	OnBnClickedButJy();
 }
 #include "AddBookTo.h"
 #include "MyGl.h"
 void CMyDbDlg::OnBnClickedButTj()
 {
+	if (bGuanli != TRUE)
+	{
+		return;
+	}
 	CMyGl dlg;
 	dlg.DoModal();
+
+	if (dlg.m_nFlag == 2)
+	{
+		OnBnClickedButSy();
+	}
+	else if (dlg.m_nFlag == 3)
+	{
+		if (dlg.m_nFlagTo != _T("0"))
+		{
+			return;
+		}
+		GetData(dlg.m_name,dlg.m_nFlagTo);
+	}
+	else if (dlg.m_nFlag == 4)
+	{
+		if (dlg.m_nFlagTo != _T("1"))
+		{
+			return;
+		}
+		GetData(dlg.m_name,dlg.m_nFlagTo);
+	}
 }
 
 void CMyDbDlg::OnBnClickedButSy()
@@ -612,9 +650,9 @@ HBRUSH CMyDbDlg::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
 
 	// TODO:  如果默认的不是所需画笔，则返回另一个画笔
 	if (pWnd->GetDlgCtrlID() == IDC_STATIC1)
-     {
-         
-     } return hbr;
+	{
+
+	} return hbr;
 	return hbr;
 }
 #include "LogIn.h"
@@ -622,36 +660,37 @@ void CMyDbDlg::OnBnClickedButTj2()
 {
 	if (m_bLongin == false)
 	{
-	
-	CLogIn LogInDlg;
-	INT_PTR ilog;
-	ilog = LogInDlg.DoModal();
-	if (ilog == IDCANCEL)
-	{
-		return;
-	}
-	m_csName =LogInDlg.m_csName;
-	if (m_csName.GetLength()==0)
-	{
-		return;
-	}
-	int Isqlnum ;
-	CUIIADORXServer *SqlServer;
-	SqlServer=OpenAdoServer(m_sqlName);
-	if (SqlServer==NULL)
-		return ;
-	else
-	{
-		CStringArray csTrlist;
-		CString csStrsql;
 
-		csStrsql.Format(_T("select * from login where Name='%s'"),m_csName);
-		Isqlnum= SqlServer->GetSelData(csStrsql,csTrlist);
-		CloseAdoServer(SqlServer);
-		m_csSelectName = csTrlist[5];
-		GetDlgItem(IDC_BUT_TJ2)->SetWindowText(_T("退出登录"));
-		m_bLongin =true;
-	}
+		CLogIn LogInDlg;
+		INT_PTR ilog;
+		ilog = LogInDlg.DoModal();
+		if (ilog == IDCANCEL)
+		{
+			return;
+		}
+		m_csName =LogInDlg.m_csName;
+		bGuanli = LogInDlg.m_flag;
+		if (m_csName.IsEmpty())
+		{
+			return;
+		}
+		int Isqlnum ;
+		CUIIADORXServer *SqlServer;
+		SqlServer=OpenAdoServer(m_sqlName);
+		if (SqlServer==NULL)
+			return ;
+		else
+		{
+			CStringArray csTrlist;
+			CString csStrsql;
+
+			csStrsql.Format(_T("select * from login where Name='%s'"),m_csName);
+			Isqlnum= SqlServer->GetSelData(csStrsql,csTrlist);
+			CloseAdoServer(SqlServer);
+			m_csSelectName = csTrlist[5];
+			GetDlgItem(IDC_BUT_TJ2)->SetWindowText(_T("退出登录"));
+			m_bLongin =true;
+		}
 	}else{
 		m_csName = _T("");
 		m_csSelectName = _T("");
@@ -680,6 +719,59 @@ void CMyDbDlg::OnBnClickedButSy2()
 		CStringArray csTrlist;
 		csStrsql.Format(_T("select * from bookmessageto where  Name='%s' and Flag='0'"),m_csName);
 		int Isqlnum= SqlServer->GetSelData(csStrsql,csTrlist);
+		if (Isqlnum <= 0)
+		{
+			MessageBox(_T("没有记录"),_T("提示"));
+			return;
+		}
+		int sum =1;
+
+		for (int i=0;i<Isqlnum;i++)
+		{
+			CStringList csTrlistTo;
+			csStrsql.Format(_T("select * from bookdata where  BookName='%s'"),csTrlist[sum]);
+
+			int IsqlnumTo=SqlServer->GetSelData(csStrsql,csTrlistTo);
+
+			IsqlnumTo=(double)IsqlnumTo/(double)6;
+
+			CString csOut;
+			POSITION rPos;
+			rPos = csTrlistTo.GetHeadPosition();
+
+			for (int i = 0; i < IsqlnumTo; i++)
+			{
+				int row = m_lstOutData.GetItemCount();
+				m_lstOutData.InsertItem(row ,_T(""));
+
+				for (int j=0;j<6;j++)
+				{
+					csOut=csTrlistTo.GetNext(rPos);
+					m_lstOutData.SetItemText(row,j,csOut);	
+				}
+
+			}
+			sum+=7;
+		}
+
+		CloseAdoServer(SqlServer);
+	}
+}
+void CMyDbDlg::GetData(CString strName, CString strFlag)
+{
+	m_lstOutData.DeleteAllItems();
+	CUIIADORXServer *SqlServer;
+	SqlServer=OpenAdoServer(m_sqlName);
+	if (SqlServer==NULL)
+		return ;
+	else
+	{
+
+		CString csStrsql;
+		CStringArray csTrlist;
+		csStrsql.Format(_T("select * from bookmessageto where  Name='%s' and Flag='%s'"),strName,strFlag);
+		int Isqlnum= SqlServer->GetSelData(csStrsql,csTrlist);
+
 		if (Isqlnum <= 0)
 		{
 			MessageBox(_T("没有记录"),_T("提示"));
